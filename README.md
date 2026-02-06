@@ -12,13 +12,13 @@
   </a>
 </p>
 
-<!-- <p align="center"> -->
+<p align="center">
 <img src="./readme_assets/example1.gif" alt="example1"/>
+</p>
 
----
-
+<p align="center">
 <img src="./readme_assets/example2.gif" alt="example2"/>
-<!-- </p> -->
+</p>
 
 
 ## See my other plugins
