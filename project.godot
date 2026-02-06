@@ -1,0 +1,33 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="MeshPath plugin"
+config/tags=PackedStringArray("my_plugin")
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+MeshPath_utils="*uid://cg1icb6wl8ipf"
+MeshPath3D_utils="*uid://cg1icb6wl8ipf"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/mesh_path_3d/plugin.cfg")
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+rendering_device/driver.windows="d3d12"
