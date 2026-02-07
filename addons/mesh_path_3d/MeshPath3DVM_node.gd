@@ -65,6 +65,11 @@ signal vertical_multimesh_updated()
 						
 						# Reconnect
 						line.path.curve.changed.connect(line._on_path_changed)
+						
+						# Reveal path in tree
+						if line.path:
+							line.path.remove_meta("_edit_lock_")
+							line.path.show()
 					
 					# Copy mesh placement data from template
 					line._placed_meshes = template._placed_meshes.duplicate()
@@ -308,6 +313,10 @@ func _share_multimeshes_between_lines() -> void:
 			continue
 		var spawned_array: Array = _spawned_lines[template]
 		for line in spawned_array:
+			# Hide path from tree when synced
+			if line.path:
+				line.path.set_meta("_edit_lock_", true)
+				line.path.hide()
 			# Share the multimesh DATA, not the instances
 			for mesh in template._mesh_to_mmi_map.keys():
 				if line._mesh_to_mmi_map.has(mesh):
