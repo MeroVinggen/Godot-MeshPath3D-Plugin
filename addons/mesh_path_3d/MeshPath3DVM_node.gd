@@ -43,61 +43,32 @@ signal vertical_multimesh_updated()
 
 @export var share_multimeshes: bool = false:
 	set(value):
+		if share_multimeshes == value:
+			return
 		share_multimeshes = value
 		
 		if not share_multimeshes:
-			# Restore independent paths WITHOUT triggering updates
+			# Break the multimesh sharing
 			for template in _spawned_lines.keys():
 				if not template:
 					continue
 				var spawned_array: Array = _spawned_lines[template]
 				for line in spawned_array:
-					# Store existing mesh state
-					var stored_placed_meshes = line._placed_meshes.duplicate()
-					var stored_rotations = line._placed_meshes_rotation.duplicate()
-					var stored_offsets = line._placed_meshes_offset.duplicate()
-					var stored_scales = line._placed_meshes_scale.duplicate()
-					var stored_gaps = line._placed_meshes_gaps.duplicate()
-					var stored_transforms = line._mesh_transforms.duplicate()
-					
-					# Create independent path copy
-					var path_copy: Path3D = Path3D.new()
-					path_copy.curve = template.path.curve.duplicate(true)
-					line.add_child(path_copy)
-					path_copy.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
-					line.path = path_copy
-					
-					# Restore mesh state
-					line._placed_meshes = stored_placed_meshes
-					line._placed_meshes_rotation = stored_rotations
-					line._placed_meshes_offset = stored_offsets
-					line._placed_meshes_scale = stored_scales
-					line._placed_meshes_gaps = stored_gaps
-					line._mesh_transforms = stored_transforms
-					
-					# Cancel the scheduled update
-					line._shedule_multimesh_update = false
-					line._passed_frames = 0
-					
-					# Re-enable updates
+					# Create new independent multimesh for each MMI
+					for mesh in line._mesh_to_mmi_map.keys():
+						var old_mm = line._mesh_to_mmi_map[mesh].multimesh
+						var new_mm = MultiMesh.new()
+						new_mm.transform_format = MultiMesh.TRANSFORM_3D
+						new_mm.use_colors = true
+						new_mm.mesh = mesh
+						new_mm.instance_count = old_mm.instance_count
+						# Copy transforms
+						for i in range(old_mm.instance_count):
+							new_mm.set_instance_transform(i, old_mm.get_instance_transform(i))
+						line._mesh_to_mmi_map[mesh].multimesh = new_mm
 					line.set_physics_process(true)
-		else:
-			# When turning sync on, share references WITHOUT freeing paths
-			for template in _spawned_lines.keys():
-				if not template:
-					continue
-				var spawned_array: Array = _spawned_lines[template]
-				for line in spawned_array:
-					# Disconnect line's path change handler
-					if line.path and line.path.curve and line.path.curve.is_connected("changed", line._on_path_changed):
-						line.path.curve.changed.disconnect(line._on_path_changed)
-					# Free old independent path if exists
-					if line.path and line.path.get_parent() == line:
-						line.path.queue_free()
-					# Share template's path
-					line.path = template.path
-					line.set_physics_process(false)
-			call_update_all_lines()
+		
+		call_update_all_lines()
 
 @export var multimesh_update_rate: int = 2
 
@@ -308,9 +279,6 @@ func _create_line_copy(template: MeshPath3D) -> MeshPath3D:
 	new_line.mesh_scale2 = template.mesh_scale2
 	new_line.processor = template.processor
 	
-	if share_multimeshes:
-		new_line.multimesh_update_rate = 999999
-	
 	return new_line
 
 
@@ -318,17 +286,13 @@ func _share_multimeshes_between_lines() -> void:
 	for template in _spawned_lines.keys():
 		if not template:
 			continue
-		
-		var template_mmis: Dictionary = template._mesh_to_mmi_map
-		# @param {spawned_array} Array[MeshPath3D]
 		var spawned_array: Array = _spawned_lines[template]
-		
 		for line in spawned_array:
-			
-			for mesh in line._mesh_to_mmi_map.keys():
-				if template_mmis.has(mesh):
-					# Share the multimesh reference
-					line._mesh_to_mmi_map[mesh].multimesh = template_mmis[mesh].multimesh
+			# Share the multimesh DATA, not the instances
+			for mesh in template._mesh_to_mmi_map.keys():
+				if line._mesh_to_mmi_map.has(mesh):
+					line._mesh_to_mmi_map[mesh].multimesh = template._mesh_to_mmi_map[mesh].multimesh
+			line.set_physics_process(false)
 
 
 func _clear_spawned_lines_for_template(template: MeshPath3D) -> void:
