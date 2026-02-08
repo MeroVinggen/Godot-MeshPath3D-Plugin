@@ -553,25 +553,47 @@ func bake_multiple_with_collision() -> Dictionary[String, Variant]:
 
 
 func add_single_collision(parent_ref: Node = null) -> void:
-	# Calculate combined AABB and call line's collision creation
 	var combined_aabb = _calculate_all_aabb()
 	if template_lines.is_empty() or not template_lines[0]:
 		return
 	var temp_line = template_lines[0]
 	var old_collision = temp_line.collision_type
 	temp_line.collision_type = collision_type
-	var collision_body = temp_line._create_collision_body(parent_ref if parent_ref else self)
+	
+	var parent_node: Node = get_parent() if bake_as_sibling else self
+	var container: Node = _create_container(parent_node) if bake_in_single_sub_container else parent_node
+	
+	var collision_body = temp_line._create_collision_body(container)
 	var collision_shape = temp_line._create_collision_shape(combined_aabb.size, collision_body)
 	collision_body.global_position = combined_aabb.get_center()
-	# Restore
 	temp_line.collision_type = old_collision
 
 
 func add_multiple_collision(parent_ref: Node = null) -> void:
-	# Just call each line's add_multiple_collision
+	var parent_node: Node
+	var container: Node
+	
+	if parent_ref:
+		parent_node = parent_ref
+	else:
+		parent_node = get_parent() if bake_as_sibling else self
+	
+	if bake_in_single_sub_container:
+		container = _create_container(parent_node)
+	else:
+		container = parent_node
+	
 	for line in _spawned_lines_list:
 		if line:
-			line.add_multiple_collision(parent_ref if parent_ref else self)
+			var old_collision = line.collision_type
+			var old_separate = line.bake_in_separate_sub_containers
+			line.collision_type = collision_type
+			line.bake_in_separate_sub_containers = bake_in_separate_sub_containers
+			
+			line.add_multiple_collision(container)
+			
+			line.collision_type = old_collision
+			line.bake_in_separate_sub_containers = old_separate
 
 
 func _calculate_all_aabb() -> AABB:
@@ -582,3 +604,11 @@ func _calculate_all_aabb() -> AABB:
 			var line_aabb = line._calculate_combined_aabb()
 			combined = combined.merge(line.global_transform * line_aabb) if combined.has_volume() else line.global_transform * line_aabb
 	return combined
+
+
+func _create_container(parent_node: Node) -> Node3D:
+	var container: Node3D = Node3D.new()
+	parent_node.add_child(container)
+	container.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
+	container.global_transform = global_transform
+	return container
