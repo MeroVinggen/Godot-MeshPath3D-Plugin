@@ -425,18 +425,7 @@ func _update_multimesh() -> void:
 	
 	# Calculate combined AABB
 	if not _mesh_transforms.is_empty():
-		var combined_aabb: AABB
-		for mesh_index in range(min(_placed_meshes.size(), _mesh_transforms.size())):
-			var placed_meshe: Mesh = _placed_meshes[mesh_index]
-			if not placed_meshe:
-				continue
-			var mesh_aabb: AABB = placed_meshe.get_aabb()
-			var transformed_aabb: AABB = _mesh_transforms[mesh_index] * mesh_aabb
-			if mesh_index == 0:
-				combined_aabb = transformed_aabb
-			else:
-				combined_aabb = combined_aabb.merge(transformed_aabb)
-		_cached_aabb = combined_aabb
+		_cached_aabb = _calculate_combined_aabb()
 	else:
 		_cached_aabb = AABB()
 	
@@ -682,19 +671,7 @@ func add_single_collision() -> void:
 		return
 	
 	var collision_body: CollisionObject3D = _create_collision_body(_get_container())
-	
-	# Calculate combined AABB (existing logic)
-	var combined_aabb: AABB
-	for i in range(min(_placed_meshes.size(), _mesh_transforms.size())):
-		var mesh: Mesh = _placed_meshes[i]
-		if not mesh:
-			continue
-		var mesh_aabb: AABB = mesh.get_aabb().abs()
-		mesh_aabb = _mesh_transforms[i] * mesh_aabb
-		if i == 0:
-			combined_aabb = mesh_aabb
-		else:
-			combined_aabb = combined_aabb.merge(mesh_aabb)
+	var combined_aabb: AABB = _calculate_combined_aabb()
 	
 	var collision_shape: CollisionShape3D = _create_collision_shape(combined_aabb.size, collision_body)
 	collision_shape.position = combined_aabb.get_center()
@@ -848,3 +825,21 @@ func _get_container() -> Node:
 		container = parent_node
 	
 	return container
+
+
+func _calculate_combined_aabb() -> AABB:
+	if _mesh_transforms.is_empty() or _placed_meshes.is_empty():
+		return AABB()
+	
+	var combined_aabb: AABB
+	for i in range(min(_placed_meshes.size(), _mesh_transforms.size())):
+		var mesh: Mesh = _placed_meshes[i]
+		if not mesh:
+			continue
+		var mesh_aabb: AABB = mesh.get_aabb()
+		var transformed_aabb: AABB = _mesh_transforms[i] * mesh_aabb
+		if i == 0:
+			combined_aabb = transformed_aabb
+		else:
+			combined_aabb = combined_aabb.merge(transformed_aabb)
+	return combined_aabb
