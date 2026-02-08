@@ -517,17 +517,24 @@ func bake_multiple(parent_ref: Node = null) -> Dictionary[String, Variant]:
 		push_warning("No meshes to bake!")
 		return {}
 	
-	var container: Node3D = _get_container(parent_ref)
-	var baked: Array[MeshInstance3D] = []
+	var parent_node: Node = get_parent() if bake_as_sibling else self
+	if parent_ref:
+		parent_node = parent_ref
 	
-	var mesh_instance: MeshInstance3D
+	var main_container: Node
+	if bake_in_single_sub_container:
+		main_container = _create_container(parent_node)
+	else:
+		main_container = parent_node
+	
+	var baked: Array[MeshInstance3D] = []
 	
 	for i in range(min(_placed_meshes.size(), _mesh_transforms.size())):
 		var mesh: Mesh = _placed_meshes[i]
 		if not mesh:
 			continue
 		
-		mesh_instance = MeshInstance3D.new()
+		var mesh_instance: MeshInstance3D = MeshInstance3D.new()
 		mesh_instance.mesh = mesh
 		mesh_instance.name = "Mesh_" + str(i)
 		mesh_instance.transform = _mesh_transforms[i]
@@ -536,17 +543,16 @@ func bake_multiple(parent_ref: Node = null) -> Dictionary[String, Variant]:
 		if processor:
 			processor.process_bake_multiple(mesh_instance, material, _mesh_to_mmi_map[mesh])
 		
+		var container: Node = main_container
 		if bake_in_separate_sub_containers:
-			var sub_container: Node3D = _create_container(container)
-			sub_container.add_child(mesh_instance)
-		else:
-			container.add_child(mesh_instance)
+			container = _create_container(main_container)
 		
+		container.add_child(mesh_instance)
 		mesh_instance.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
 		baked.append(mesh_instance)
 	
 	return {
-		"container": container,
+		"container": main_container,
 		"baked": baked,
 	}
 
@@ -699,7 +705,15 @@ func add_multiple_collision(parent_ref: Node = null) -> void:
 		push_warning("No meshes placed")
 		return
 	
-	var container: Node = _get_container(parent_ref)
+	var parent_node: Node = get_parent() if bake_as_sibling else self
+	if parent_ref:
+		parent_node = parent_ref
+	
+	var main_container: Node
+	if bake_in_single_sub_container:
+		main_container = _create_container(parent_node)
+	else:
+		main_container = parent_node
 	
 	# Create collision shape per mesh
 	for i in range(min(_placed_meshes.size(), _mesh_transforms.size())):
@@ -710,11 +724,13 @@ func add_multiple_collision(parent_ref: Node = null) -> void:
 		var mesh_aabb: AABB = _mesh_base_aabbs[mesh]
 		var mesh_transform: Transform3D = _mesh_transforms[i]
 		
-		# Create collision body at mesh position
-		var collision_body: CollisionObject3D = _create_collision_body(container)
-		collision_body.global_position = global_transform.origin + mesh_transform.origin + mesh_transform.basis * mesh_aabb.get_center()
+		var container: Node = main_container
+		if bake_in_separate_sub_containers:
+			container = _create_container(main_container)
 		
-		# Create shape with only rotation and scale (no position offset)
+		var collision_body: CollisionObject3D = _create_collision_body(container)
+		collision_body.position = mesh_transform.origin + mesh_transform.basis * mesh_aabb.get_center()
+		
 		var collision_shape: CollisionShape3D = _create_collision_shape(mesh_aabb.size, collision_body)
 		collision_shape.basis = mesh_transform.basis
 		collision_shape.position = Vector3.ZERO
