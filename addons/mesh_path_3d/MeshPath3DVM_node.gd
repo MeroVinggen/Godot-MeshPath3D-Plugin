@@ -469,14 +469,36 @@ func _bake_single_merged(meshes: Array, transforms: Array) -> Dictionary:
 
 func bake_multiple() -> Dictionary[String, Variant]:
 	var all_baked: Array[MeshInstance3D] = []
-	var container = null
+	
+	var parent_node: Node = get_parent() if bake_as_sibling else self
+	var container: Node
+	
+	if bake_in_single_sub_container:
+		container = Node3D.new()
+		parent_node.add_child(container)
+		container.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
+		container.global_transform = global_transform
+	else:
+		container = parent_node
 	
 	for line in _spawned_lines_list:
 		if not line:
 			continue
-		var result = line.bake_multiple(self)
-		if container == null:
-			container = result.get("container")
+		# Temporarily disable line's container options
+		var old_sibling = line.bake_as_sibling
+		var old_single = line.bake_in_single_sub_container
+		var old_separate = line.bake_in_separate_sub_containers
+		line.bake_as_sibling = false
+		line.bake_in_single_sub_container = false
+		line.bake_in_separate_sub_containers = bake_in_separate_sub_containers
+		
+		var result = line.bake_multiple(container)
+		
+		# Restore line's settings
+		line.bake_as_sibling = old_sibling
+		line.bake_in_single_sub_container = old_single
+		line.bake_in_separate_sub_containers = old_separate
+		
 		# Fix positions
 		for mesh_instance in result.get("baked", []):
 			mesh_instance.global_transform = line.global_transform * mesh_instance.transform
@@ -487,14 +509,36 @@ func bake_multiple() -> Dictionary[String, Variant]:
 
 func bake_multiple_with_collision() -> Dictionary[String, Variant]:
 	var all_baked: Array = []
-	var container = null
+	
+	var parent_node: Node = get_parent() if bake_as_sibling else self
+	var container: Node
+	
+	if bake_in_single_sub_container:
+		container = Node3D.new()
+		parent_node.add_child(container)
+		container.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
+		container.global_transform = global_transform
+	else:
+		container = parent_node
 	
 	for line in _spawned_lines_list:
 		if not line:
 			continue
-		var result = line.bake_multiple_with_collision(self)
-		if container == null:
-			container = result.get("container")
+		# Temporarily disable line's container options
+		var old_sibling = line.bake_as_sibling
+		var old_single = line.bake_in_single_sub_container
+		var old_separate = line.bake_in_separate_sub_containers
+		line.bake_as_sibling = false
+		line.bake_in_single_sub_container = false
+		line.bake_in_separate_sub_containers = bake_in_separate_sub_containers
+		
+		var result = line.bake_multiple_with_collision(container)
+		
+		# Restore line's settings
+		line.bake_as_sibling = old_sibling
+		line.bake_in_single_sub_container = old_single
+		line.bake_in_separate_sub_containers = old_separate
+		
 		# Fix positions
 		for baked_dict in result.get("baked", []):
 			var collision_body = baked_dict.get("collision_body")
