@@ -24,7 +24,6 @@ func generate_baked_mesh_path(
 	pos_from: Vector3, 
 	pos_to: Vector3,
 	meshes: Array[Mesh],
-	material: Material, 
 	optional_params: Dictionary[String, Variant] = {},
 ) -> Variant:
 	var mesh_path: MeshPath3D = MeshPath3D.new()
@@ -39,7 +38,6 @@ func generate_baked_mesh_path(
 	
 	# -- setup mehs & path
 	mesh_path.meshes = meshes
-	mesh_path.material = material
 	
 	# -- setup additional params
 	for param: String in optional_params:

@@ -160,7 +160,7 @@ enum COLLISION_TYPE {
 @export_storage var _last_random_index: int = -1
 @export_storage var _placed_meshes_gaps: Array[float] = []
 @export_storage var _cached_aabb: AABB
-@export_storage var _mesh_base_aabbs: Dictionary = {}
+@export_storage var _mesh_base_aabbs: Dictionary[Mesh, AABB] = {}
 
 @export_group("Internal")
 
@@ -449,7 +449,7 @@ func _update_multimesh() -> void:
 	multimesh_updated.emit()
 
 
-func bake_single() -> Dictionary[String, Variant]:
+func bake_single(parent_ref: Node = null) -> Dictionary[String, Variant]:
 	if _placed_meshes.is_empty():
 		push_warning("No meshes to bake!")
 		return {}
@@ -495,7 +495,7 @@ func bake_single() -> Dictionary[String, Variant]:
 	if processor:
 		processor.process_bake_single(baked_instance, material)
 	
-	var container: Node3D = _get_container()
+	var container: Node3D = _get_container(parent_ref)
 	
 	if bake_in_separate_sub_containers:
 		var sub_container: Node3D = _create_container(container)
@@ -512,12 +512,12 @@ func bake_single() -> Dictionary[String, Variant]:
 	}
 
 
-func bake_multiple() -> Dictionary[String, Variant]:
+func bake_multiple(parent_ref: Node = null) -> Dictionary[String, Variant]:
 	if _placed_meshes.is_empty():
 		push_warning("No meshes to bake!")
 		return {}
 	
-	var container: Node3D = _get_container()
+	var container: Node3D = _get_container(parent_ref)
 	var baked: Array[MeshInstance3D] = []
 	
 	var mesh_instance: MeshInstance3D
@@ -682,24 +682,24 @@ func _create_collision_shape(box_size: Vector3, parent_node: CollisionObject3D) 
 	return collision_shape
 
 
-func add_single_collision() -> void:
+func add_single_collision(parent_ref: Node = null) -> void:
 	if _mesh_transforms.is_empty():
 		push_warning("No meshes placed")
 		return
 	
-	var collision_body: CollisionObject3D = _create_collision_body(_get_container())
+	var collision_body: CollisionObject3D = _create_collision_body(_get_container(parent_ref))
 	var combined_aabb: AABB = _calculate_combined_aabb()
 	
 	var collision_shape: CollisionShape3D = _create_collision_shape(combined_aabb.size, collision_body)
 	collision_shape.position = combined_aabb.get_center()
 
 
-func add_multiple_collision() -> void:
+func add_multiple_collision(parent_ref: Node = null) -> void:
 	if _mesh_transforms.is_empty():
 		push_warning("No meshes placed")
 		return
 	
-	var container: Node = _get_container()
+	var container: Node = _get_container(parent_ref)
 	
 	# Create collision shape per mesh
 	for i in range(min(_placed_meshes.size(), _mesh_transforms.size())):
@@ -765,13 +765,13 @@ func _on_processor_changed() -> void:
 	call_update_multimesh()
 
 
-func bake_multiple_with_collision() -> Dictionary[String, Variant]:
+func bake_multiple_with_collision(parent_ref: Node = null) -> Dictionary[String, Variant]:
 	if _placed_meshes.is_empty():
 		push_warning("No meshes to bake!")
 		return {}
 	
 	var baked: Array[Dictionary] = []
-	var container: Node = _get_container()
+	var container: Node = _get_container(parent_ref)
 	var sub_container: Node3D
 	
 	for i in range(min(_placed_meshes.size(), _mesh_transforms.size())):
@@ -834,9 +834,14 @@ func _create_container(parent_node: Node) -> Node3D:
 	return container
 
 
-func _get_container() -> Node:
+func _get_container(parent_ref: Node = null) -> Node:
 	var container: Node
-	var parent_node: Node = get_parent() if bake_as_sibling else self
+	var parent_node: Node
+	
+	if parent_ref:
+		parent_node = parent_ref
+	else:
+		parent_node = get_parent() if bake_as_sibling else self
 	
 	if bake_in_single_sub_container:
 		container = _create_container(parent_node)
