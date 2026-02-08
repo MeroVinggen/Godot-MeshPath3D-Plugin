@@ -549,15 +549,19 @@ func bake_multiple_with_collision() -> Dictionary[String, Variant]:
 	return {"container": container, "baked": all_baked}
 
 
-func add_single_collision() -> void:
+func add_single_collision(parent_ref: Node = null) -> void:
 	# Calculate combined AABB and call line's collision creation
 	var combined_aabb = _calculate_all_aabb()
 	if template_lines.is_empty() or not template_lines[0]:
 		return
 	var temp_line = template_lines[0]
-	var collision_body = temp_line._create_collision_body(temp_line._get_container())
+	var old_collision = temp_line.collision_type
+	temp_line.collision_type = collision_type
+	var collision_body = temp_line._create_collision_body(temp_line._get_container(parent_ref))
 	var collision_shape = temp_line._create_collision_shape(combined_aabb.size, collision_body)
-	collision_shape.position = combined_aabb.get_center()
+	collision_body.global_position = combined_aabb.get_center()
+	# Restore
+	temp_line.collision_type = old_collision
 
 
 func add_multiple_collision() -> void:
