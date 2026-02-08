@@ -115,7 +115,6 @@ enum COLLISION_TYPE {
 		mesh_face_path_z = value
 		call_update_multimesh()
 
-
 # ---- flip
 @export var random_flip_x: bool = false
 @export var random_flip_y: bool = false
@@ -161,6 +160,7 @@ enum COLLISION_TYPE {
 @export_storage var _last_random_index: int = -1
 @export_storage var _placed_meshes_gaps: Array[float] = []
 @export_storage var _cached_aabb: AABB
+@export_storage var _mesh_base_aabbs: Dictionary = {}
 
 @export_group("Internal")
 
@@ -319,9 +319,9 @@ func _update_multimesh() -> void:
 		else:
 			rotation_basis = Basis.from_euler(_covert_rotation_to_rad(mesh_rotation) + initial_mesh_rotation)
 		
-		var aabb: AABB = mesh.get_aabb()
+		var aabb: AABB = _mesh_base_aabbs[mesh]
 
-		# Create a temporary transform to get rotated bounds
+		# Apply only scale and rotation (no curve rotation yet for size calc)
 		var temp_transform: Transform3D = Transform3D()
 		temp_transform.basis = rotation_basis * scale_basis
 		var rotated_aabb: AABB = temp_transform * aabb
@@ -690,7 +690,7 @@ func add_multiple_collision() -> void:
 		if not mesh:
 			continue
 		
-		var mesh_aabb: AABB = mesh.get_aabb()
+		var mesh_aabb: AABB = _mesh_base_aabbs[mesh]
 		var mesh_transform: Transform3D = _mesh_transforms[i]
 		
 		# Create collision body at mesh position
@@ -709,6 +709,7 @@ func _on_meshes_array_updated() -> void:
 		if not mesh or _mesh_to_mmi_map.has(mesh):
 			continue
 		else:
+			_mesh_base_aabbs[mesh] = mesh.get_aabb()
 			var mmi: MultiMeshInstance3D = MultiMeshInstance3D.new()
 			_update_material_and_processor(mmi)
 			add_child(mmi)
@@ -727,6 +728,7 @@ func _on_meshes_array_updated() -> void:
 	for mesh in _mesh_to_mmi_map:
 		if not meshes.has(mesh):
 			_mesh_to_mmi_map.erase(mesh)
+			_mesh_base_aabbs.erase(mesh)
 
 
 func _setup_material_and_processor() -> void:
@@ -760,7 +762,7 @@ func bake_multiple_with_collision() -> Dictionary[String, Variant]:
 		if not mesh:
 			continue
 		
-		var mesh_aabb: AABB = mesh.get_aabb()
+		var mesh_aabb: AABB = _mesh_base_aabbs[mesh]
 		var mesh_transform: Transform3D = _mesh_transforms[i]
 		
 		# Create collision body at mesh position
@@ -836,7 +838,7 @@ func _calculate_combined_aabb() -> AABB:
 		var mesh: Mesh = _placed_meshes[i]
 		if not mesh:
 			continue
-		var mesh_aabb: AABB = mesh.get_aabb()
+		var mesh_aabb: AABB = _mesh_base_aabbs[mesh]
 		var transformed_aabb: AABB = _mesh_transforms[i] * mesh_aabb
 		if i == 0:
 			combined_aabb = transformed_aabb
