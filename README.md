@@ -20,6 +20,10 @@
 <img src="./readme_assets/example2.gif" alt="example2"/>
 </p>
 
+<p align="center">
+<img src="./readme_assets/example3.gif" alt="example3"/>
+</p>
+
 
 ## See my other plugins
 
