@@ -239,15 +239,16 @@ func _update_all_lines() -> void:
 			_spawned_lines[template].append(line)
 			# Force immediate update to calculate AABB
 			line._update_multimesh()
-		
-		# Position line at current distance along vertical path
-		var curve_position: Vector3 = curve.sample_baked(current_distance)
+
+		# Position line so its AABB bottom aligns with current_distance
+		var line_aabb: AABB = line._cached_aabb
+		var offset_to_bottom: float = line_aabb.position.y
+		var curve_position: Vector3 = curve.sample_baked(current_distance - offset_to_bottom)
 		line.global_position = global_position + curve_position
+
+		# Advance to this line's AABB top
+		current_distance += line_aabb.size.y + gap
 		
-		# Get line height for next offset
-		var line_height: float = line.get_height() if line.get_height() > 0 else 1.0
-		
-		current_distance += line_height + gap
 		global_line_index += 1
 	
 	# Remove excess lines
