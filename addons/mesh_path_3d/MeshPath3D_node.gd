@@ -9,6 +9,7 @@ signal multimesh_updated()
 @export_tool_button("randomize") var randomize_mesh_btn: Callable = randomize_meshes
 @export_tool_button("re-render") var update_btn: Callable = call_update_multimesh
 @export_tool_button("clear") var clear_mesh_btn: Callable = clear_meshes
+@export_tool_button("center meshes") var center_meshes_btn: Callable = center_meshes
 
 @export_group("Bake")
 
@@ -900,3 +901,44 @@ func _calculate_combined_aabb() -> AABB:
 		else:
 			combined_aabb = combined_aabb.merge(transformed_aabb)
 	return combined_aabb
+
+
+func center_meshes() -> void:
+	if not path or not path.curve or _placed_meshes.is_empty() or _placed_meshes_gaps.is_empty():
+		push_warning("Requires path and placed meshes")
+		return
+	
+	var curve_length: float = path.curve.get_baked_length()
+	
+	# Sum up actual mesh lengths and gaps from the placement arrays
+	var total_content: float = 0.0
+	
+	# Add all mesh lengths (using the same calculation as placement)
+	for i in range(_placed_meshes.size()):
+		var mesh: Mesh = _placed_meshes[i]
+		if not mesh:
+			continue
+		
+		var aabb: AABB = _mesh_base_aabbs[mesh]
+		var temp_transform: Transform3D = Transform3D()
+		temp_transform.basis = _placed_meshes_rotation[i] * _placed_meshes_scale[i]
+		var rotated_aabb: AABB = temp_transform * aabb
+		
+		# Calculate mesh length along path
+		var mesh_length: float = rotated_aabb.end.z - rotated_aabb.position.z
+		total_content += mesh_length
+	
+	# Add all gaps
+	for gap in _placed_meshes_gaps:
+		total_content += gap
+	
+	# Remove the last gap (there's no gap after the last mesh)
+	if not _placed_meshes_gaps.is_empty():
+		total_content -= _placed_meshes_gaps[_placed_meshes_gaps.size() - 1]
+	
+	# Calculate centering margin
+	var free_space: float = curve_length - total_content
+	start_margin = max(0, free_space / 2.0)
+	end_margin = max(0, free_space / 2.0)
+	
+	call_update_multimesh()
