@@ -412,6 +412,11 @@ func _update_multimesh() -> void:
 			gap_value = gap_min if gap_max < 0 else randf_range(gap_min, gap_max)
 			_placed_meshes_gaps.append(gap_value)
 
+		print("i=%d, mesh=%s, current_distance=%.2f, back_offset=%.2f, front_offset=%.2f, mesh_length=%.2f, gap=%.2f" % [i, mesh.resource_path.get_file(), current_distance, back_offset, front_offset, mesh_length, gap_value])
+		print("  -> placement_distance=%.2f" % placement_distance)
+		print("  -> actual_end_position=%.2f (should match next current_distance)" % (placement_distance + front_offset))
+		print("  -> back_face_position=%.2f" % (placement_distance + back_offset))
+		
 		current_distance += mesh_length + gap_value
 		i += 1
 	
