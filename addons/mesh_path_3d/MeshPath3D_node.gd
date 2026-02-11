@@ -412,11 +412,6 @@ func _update_multimesh() -> void:
 			gap_value = gap_min if gap_max < 0 else randf_range(gap_min, gap_max)
 			_placed_meshes_gaps.append(gap_value)
 
-		print("i=%d, mesh=%s, current_distance=%.2f, back_offset=%.2f, front_offset=%.2f, mesh_length=%.2f, gap=%.2f" % [i, mesh.resource_path.get_file(), current_distance, back_offset, front_offset, mesh_length, gap_value])
-		print("  -> placement_distance=%.2f" % placement_distance)
-		print("  -> actual_end_position=%.2f (should match next current_distance)" % (placement_distance + front_offset))
-		print("  -> back_face_position=%.2f" % (placement_distance + back_offset))
-		
 		current_distance += mesh_length + gap_value
 		i += 1
 	
@@ -913,12 +908,12 @@ func center_meshes() -> void:
 		push_warning("Requires path and placed meshes")
 		return
 	
-	var curve_length: float = path.curve.get_baked_length()
-	
-	# Sum up actual mesh lengths and gaps from the placement arrays
+	var curve: Curve3D = path.curve
+	var curve_length: float = curve.get_baked_length()
 	var total_content: float = 0.0
+	var current_distance: float = start_margin  # Track position for curve sampling
 	
-	# Add all mesh lengths (using the same calculation as placement)
+	# Calculate mesh lengths using same logic as _update_multimesh
 	for i in range(_placed_meshes.size()):
 		var mesh: Mesh = _placed_meshes[i]
 		if not mesh:
@@ -929,19 +924,31 @@ func center_meshes() -> void:
 		temp_transform.basis = _placed_meshes_rotation[i] * _placed_meshes_scale[i]
 		var rotated_aabb: AABB = temp_transform * aabb
 		
-		# Calculate mesh length along path
-		var mesh_length: float = rotated_aabb.end.z - rotated_aabb.position.z
+		var mesh_length: float
+		
+		# Same logic as _update_multimesh
+		if mesh_face_path_x and mesh_face_path_y and mesh_face_path_z:
+			mesh_length = rotated_aabb.end.z - rotated_aabb.position.z
+		else:
+			# Project corners
+			var curve_forward: Vector3 = curve.sample_baked_with_rotation(current_distance).basis.z
+			var corners: Array = []
+			for x in [rotated_aabb.position.x, rotated_aabb.end.x]:
+				for y in [rotated_aabb.position.y, rotated_aabb.end.y]:
+					for z in [rotated_aabb.position.z, rotated_aabb.end.z]:
+						corners.append(temp_transform.basis * Vector3(x, y, z))
+			
+			var projections: Array = corners.map(func(c): return c.dot(curve_forward))
+			mesh_length = projections.max() - projections.min()
+		
 		total_content += mesh_length
+		var gap: float = _placed_meshes_gaps[i] if i < _placed_meshes_gaps.size() else 0.0
+		current_distance += mesh_length + gap
 	
-	# Add all gaps
-	for gap in _placed_meshes_gaps:
-		total_content += gap
+	# Add all gaps except the last one
+	for i in range(_placed_meshes_gaps.size() - 1):
+		total_content += _placed_meshes_gaps[i]
 	
-	# Remove the last gap (there's no gap after the last mesh)
-	if not _placed_meshes_gaps.is_empty():
-		total_content -= _placed_meshes_gaps[_placed_meshes_gaps.size() - 1]
-	
-	# Calculate centering margin
 	var free_space: float = curve_length - total_content
 	start_margin = max(0, free_space / 2.0)
 	end_margin = max(0, free_space / 2.0)
