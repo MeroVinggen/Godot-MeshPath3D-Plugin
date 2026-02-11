@@ -908,6 +908,10 @@ func center_meshes() -> void:
 		push_warning("Requires path and placed meshes")
 		return
 	
+	clear_meshes()
+	call_update_multimesh()
+	await multimesh_updated
+	
 	var curve: Curve3D = path.curve
 	var curve_length: float = curve.get_baked_length()
 	var total_content: float = 0.0

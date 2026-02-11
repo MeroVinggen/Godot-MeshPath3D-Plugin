@@ -9,6 +9,7 @@ signal vertical_multimesh_updated()
 @export_tool_button("randomize lines") var randomize_lines_btn: Callable = randomize_lines
 @export_tool_button("randomize meshes") var randomize_meshes_btn: Callable = randomize_meshes
 @export_tool_button("re-render all") var update_all_btn: Callable = call_re_render_all
+@export_tool_button("center all meshes") var call_center_all_lines_meshes_btn: Callable = call_center_all_lines_meshes
 
 @export_group("Bake")
 
@@ -162,6 +163,11 @@ func call_re_render_all() -> void:
 	_spawned_lines.clear()
 	
 	call_update_all_lines()
+
+
+func call_center_all_lines_meshes() -> void:
+	for line in _spawned_lines_list:
+		line.center_meshes()
 
 
 func randomize_lines() -> void:
