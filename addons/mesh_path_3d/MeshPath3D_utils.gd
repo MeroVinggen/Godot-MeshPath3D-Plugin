@@ -167,3 +167,71 @@ func generate_baked_mesh_path_vm_with_lines(
 	)
 	
 	return bake_result
+
+
+#func align_bake_at_bottom_by_box_shape(result: Dictionary, ground_shape: CollisionShape3D, vertical_wall: bool) -> void:
+	#var baked = result.get("baked")
+	#if not baked is Array: return
+	#
+	#var ground_box: BoxShape3D = ground_shape.shape as BoxShape3D
+	#if not ground_box: return
+	#
+	#var ground_top_y: float = ground_shape.global_position.y + ground_box.size.y * 0.5
+	#
+	#if vertical_wall:
+		## Find lowest shape, apply same offset to all
+		#var min_bottom_y: float = INF
+		#for item in baked:
+			#if not item is Dictionary: continue
+			#var shape: CollisionShape3D = item.get("collision_shape")
+			#if not shape or not shape.shape is BoxShape3D: continue
+			#var box: BoxShape3D = shape.shape
+			#min_bottom_y = min(min_bottom_y, shape.global_position.y - box.size.y * 0.5)
+		#
+		#if min_bottom_y == INF: return
+		#
+		#var diff_y: float = ground_top_y - min_bottom_y
+		#for item in baked:
+			#if not item is Dictionary: continue
+			#var body: Node3D = item.get("collision_body")
+			#if body: body.global_position.y += diff_y
+	#else:
+		## Align each shape individually
+		#for item in baked:
+			#if not item is Dictionary: continue
+			#var shape: CollisionShape3D = item.get("collision_shape")
+			#var body: Node3D = item.get("collision_body")
+			#if not shape or not body or not shape.shape is BoxShape3D: continue
+			#var box: BoxShape3D = shape.shape
+			#var diff_y: float = ground_top_y + box.size.y * 0.5 - shape.global_position.y
+			#body.global_position.y += diff_y
+
+
+func align_bake_at_bottom_by_pos(result: Dictionary, ground_y: float, vertical_wall: bool = false) -> void:
+	var baked = result.get("baked")
+	if not baked is Array: return
+	
+	if vertical_wall:
+		var min_bottom_y: float = INF
+		for item in baked:
+			if not item is Dictionary: continue
+			var shape: CollisionShape3D = item.get("collision_shape")
+			if not shape or not shape.shape is BoxShape3D: continue
+			var box: BoxShape3D = shape.shape
+			min_bottom_y = min(min_bottom_y, shape.global_position.y - box.size.y * 0.5)
+		
+		if min_bottom_y == INF: return
+		
+		var diff_y: float = ground_y - min_bottom_y
+		for item in baked:
+			if not item is Dictionary: continue
+			var body: Node3D = item.get("collision_body")
+			if body: body.global_position.y += diff_y
+	else:
+		for item in baked:
+			if not item is Dictionary: continue
+			var shape: CollisionShape3D = item.get("collision_shape")
+			var body: Node3D = item.get("collision_body")
+			if not shape or not body or not shape.shape is BoxShape3D: continue
+			var box: BoxShape3D = shape.shape
+			body.global_position.y = ground_y + box.size.y * 0.5
