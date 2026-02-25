@@ -3,6 +3,7 @@ extends Node3D
 class_name MeshPath3DVM
 
 signal vertical_multimesh_updated()
+signal centering_finished()
 
 @export_group("Utils")
 
@@ -165,9 +166,23 @@ func call_re_render_all() -> void:
 	call_update_all_lines()
 
 
+var awaiting_lines: int
+var ready_lines: int
+
 func call_center_all_lines_meshes() -> void:
+	awaiting_lines = _spawned_lines_list.size()
+	ready_lines = 0
+	
 	for line in _spawned_lines_list:
+		line.multimesh_updated.connect(_on_line_updated, CONNECT_ONE_SHOT)
 		line.center_meshes()
+
+
+func _on_line_updated() -> void:
+	ready_lines += 1
+	
+	if ready_lines == awaiting_lines:
+		centering_finished.emit()
 
 
 func randomize_lines() -> void:
