@@ -44,7 +44,7 @@ This plugin allows you to distribute meshes along Path3D with gaps, randomizatio
 ## Features
 
 - use in editor or at runtime
-- runtime generation utils
+- runtime generation and align utils
 - placing meshes by random order
 - set static/random gaps and edges margin
 - adjust static/random rotation, scale, offset
